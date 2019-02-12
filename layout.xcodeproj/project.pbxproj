@@ -23,7 +23,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		CCB3B37622122BAA0035790E /* dump-window-layout */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "dump-window-layout"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CCB3B37622122BAA0035790E /* layout */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = layout; sourceTree = BUILT_PRODUCTS_DIR; };
 		CCB3B37922122BAA0035790E /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -41,7 +41,7 @@
 		CCB3B36D22122BAA0035790E = {
 			isa = PBXGroup;
 			children = (
-				CCB3B37822122BAA0035790E /* dump-window-layout */,
+				CCB3B37822122BAA0035790E /* layout */,
 				CCB3B37722122BAA0035790E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -49,25 +49,25 @@
 		CCB3B37722122BAA0035790E /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				CCB3B37622122BAA0035790E /* dump-window-layout */,
+				CCB3B37622122BAA0035790E /* layout */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		CCB3B37822122BAA0035790E /* dump-window-layout */ = {
+		CCB3B37822122BAA0035790E /* layout */ = {
 			isa = PBXGroup;
 			children = (
 				CCB3B37922122BAA0035790E /* main.swift */,
 			);
-			path = "dump-window-layout";
+			path = layout;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		CCB3B37522122BAA0035790E /* dump-window-layout */ = {
+		CCB3B37522122BAA0035790E /* layout */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CCB3B37D22122BAA0035790E /* Build configuration list for PBXNativeTarget "dump-window-layout" */;
+			buildConfigurationList = CCB3B37D22122BAA0035790E /* Build configuration list for PBXNativeTarget "layout" */;
 			buildPhases = (
 				CCB3B37222122BAA0035790E /* Sources */,
 				CCB3B37322122BAA0035790E /* Frameworks */,
@@ -77,9 +77,9 @@
 			);
 			dependencies = (
 			);
-			name = "dump-window-layout";
+			name = layout;
 			productName = "dump-window-layout";
-			productReference = CCB3B37622122BAA0035790E /* dump-window-layout */;
+			productReference = CCB3B37622122BAA0035790E /* layout */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -97,7 +97,7 @@
 					};
 				};
 			};
-			buildConfigurationList = CCB3B37122122BAA0035790E /* Build configuration list for PBXProject "dump-window-layout" */;
+			buildConfigurationList = CCB3B37122122BAA0035790E /* Build configuration list for PBXProject "layout" */;
 			compatibilityVersion = "Xcode 9.3";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -109,7 +109,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				CCB3B37522122BAA0035790E /* dump-window-layout */,
+				CCB3B37522122BAA0035790E /* layout */,
 			);
 		};
 /* End PBXProject section */
@@ -262,7 +262,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		CCB3B37122122BAA0035790E /* Build configuration list for PBXProject "dump-window-layout" */ = {
+		CCB3B37122122BAA0035790E /* Build configuration list for PBXProject "layout" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CCB3B37B22122BAA0035790E /* Debug */,
@@ -271,7 +271,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CCB3B37D22122BAA0035790E /* Build configuration list for PBXNativeTarget "dump-window-layout" */ = {
+		CCB3B37D22122BAA0035790E /* Build configuration list for PBXNativeTarget "layout" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CCB3B37E22122BAA0035790E /* Debug */,
