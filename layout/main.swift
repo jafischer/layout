@@ -1,5 +1,6 @@
 import Cocoa
 import Utility
+import Rainbow
 
 
 // From https://gist.github.com/salexkidd/bcbea2372e92c6e5b04cbd7f48d9b204
@@ -41,8 +42,6 @@ extension NSScreen {
         }
     }
 }
-
-// From
 
 
 func dumpScreens() {
@@ -128,7 +127,7 @@ func readLayoutConfig() -> ([UInt32: [String: AnyObject]], [[String: AnyObject]]
             desiredWindowLayouts.append(window)
         }
     } catch {
-        print("Error reading layout config! \(error)")
+        print("Error reading layout config! \(error)".red.bold)
     }
     
     return (screenLayouts, desiredWindowLayouts)
@@ -208,10 +207,10 @@ func restoreLayoutsForWindow(screenLayouts: [UInt32: [String: AnyObject]], saved
                 
                 // Get the list of the process's windows.
                 var value: AnyObject?
-                var result = AXUIElementCopyAttributeValue(axuiApp, kAXWindowsAttribute as CFString, &value)
+                var result: AXError = AXUIElementCopyAttributeValue(axuiApp, kAXWindowsAttribute as CFString, &value)
                 
                 if result != .success {
-                    print("AXUIElementCopyAttributeValue(kAXWindowsAttribute) failed with result: \(result.rawValue), \(result)")
+                    print("AXUIElementCopyAttributeValue(kAXWindowsAttribute) failed with result: \(result.rawValue)".red.bold)
                     break
                 }
                 
@@ -222,7 +221,7 @@ func restoreLayoutsForWindow(screenLayouts: [UInt32: [String: AnyObject]], saved
                         result = AXUIElementCopyAttributeValue(axuiWindow, kAXTitleAttribute as CFString, &value2)
                         
                         if result != .success {
-                            print("AXUIElementCopyAttributeValue(kAXTitleAttribute) failed with result: \(result.rawValue), \(result)")
+                            print("AXUIElementCopyAttributeValue(kAXTitleAttribute) failed with result: \(result.rawValue)".red.bold)
                             break
                         }
                         
@@ -242,7 +241,6 @@ func restoreLayoutsForWindow(screenLayouts: [UInt32: [String: AnyObject]], saved
                                 if cgWindowName.count > 40 {
                                     cgWindowName = String(cgWindowName[..<String.Index(encodedOffset: 40)]) + "..."
                                 }
-                                print("Window [\(ownerName)]\(cgWindowName)")
                                 
                                 let desiredBounds = savedWindowLayout["kCGWindowBounds"]!
                                 
@@ -269,24 +267,24 @@ func restoreLayoutsForWindow(screenLayouts: [UInt32: [String: AnyObject]], saved
                                 // the window coords don't always exactly match what I sent.
                                 if (!isClose(x1: currentPoint.x, y1: currentPoint.y, x2: desiredPosition.x, y2: desiredPosition.y)
                                     || !isClose(x1: currentSize.width, y1: currentSize.height, x2: desiredSize.width, y2: desiredSize.height)) {
-                                    print("    Moving from [\(currentPoint.x),\(currentPoint.y)], size [\(currentSize.width), \(currentSize.height)]")
-                                    print("             to [\(desiredPosition.x),\(desiredPosition.y)], size [\(desiredSize.width), \(desiredSize.height)]")
+                                    print("Moving [\(ownerName)]\(cgWindowName) from [\(currentPoint.x),\(currentPoint.y)], size [\(currentSize.width), \(currentSize.height)]" +
+                                          " to [\(desiredPosition.x),\(desiredPosition.y)], size [\(desiredSize.width), \(desiredSize.height)]".bold)
                                     
                                     let position: CFTypeRef = AXValueCreate(AXValueType(rawValue: kAXValueCGPointType)!, &desiredPosition)!
                                     result = AXUIElementSetAttributeValue(axuiWindow, kAXPositionAttribute as CFString, position)
                                     if result != .success {
-                                        print("AXUIElementCopyAttributeValue(kAXTitleAttribute) failed with result: \(result.rawValue), \(result)")
+                                        print("     AXUIElementCopyAttributeValue(kAXTitleAttribute) failed with result: \(result.rawValue)".red.bold)
                                     }
 
                                     let size: CFTypeRef = AXValueCreate(AXValueType(rawValue: kAXValueCGSizeType)!, &desiredSize)!
                                     result = AXUIElementSetAttributeValue(axuiWindow, kAXSizeAttribute as CFString, size)
                                     if result != .success {
-                                        print("AXUIElementCopyAttributeValue(kAXTitleAttribute) failed with result: \(result.rawValue), \(result)")
+                                        print("    AXUIElementCopyAttributeValue(kAXTitleAttribute) failed with result: \(result.rawValue)".red.bold)
                                     }
 
                                     usleep(250000)
                                 } else {
-                                    print("    No need to move or size.")
+                                    print("No need to move [\(ownerName)]\(cgWindowName)".dim.italic)
                                 }
                                 break
                             }
