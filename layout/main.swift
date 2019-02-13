@@ -42,6 +42,8 @@ extension NSScreen {
     }
 }
 
+// From
+
 
 func dumpScreens() {
     print("  \"screens\": [")
@@ -263,19 +265,25 @@ func restoreLayoutsForWindow(screenLayouts: [UInt32: [String: AnyObject]], saved
                                 result = AXUIElementCopyAttributeValue(axuiWindow, kAXSizeAttribute as CFString, &value3)
                                 AXValueGetValue(value3 as! AXValue, AXValueType.cgSize, &currentSize)
                                 
-                                // Rather than checking for equality, check for "within a couple of pixels" because I've found that after moving, the window coords
-                                // don't always exactly match what I sent.
+                                // Rather than checking for equality, check for "within a couple of pixels" because I've found that after moving,
+                                // the window coords don't always exactly match what I sent.
                                 if (!isClose(x1: currentPoint.x, y1: currentPoint.y, x2: desiredPosition.x, y2: desiredPosition.y)
                                     || !isClose(x1: currentSize.width, y1: currentSize.height, x2: desiredSize.width, y2: desiredSize.height)) {
                                     print("    Moving from [\(currentPoint.x),\(currentPoint.y)], size [\(currentSize.width), \(currentSize.height)]")
                                     print("             to [\(desiredPosition.x),\(desiredPosition.y)], size [\(desiredSize.width), \(desiredSize.height)]")
                                     
                                     let position: CFTypeRef = AXValueCreate(AXValueType(rawValue: kAXValueCGPointType)!, &desiredPosition)!
-                                    AXUIElementSetAttributeValue(axuiWindow, kAXPositionAttribute as CFString, position)
-                                    
+                                    result = AXUIElementSetAttributeValue(axuiWindow, kAXPositionAttribute as CFString, position)
+                                    if result != .success {
+                                        print("AXUIElementCopyAttributeValue(kAXTitleAttribute) failed with result: \(result.rawValue), \(result)")
+                                    }
+
                                     let size: CFTypeRef = AXValueCreate(AXValueType(rawValue: kAXValueCGSizeType)!, &desiredSize)!
-                                    AXUIElementSetAttributeValue(axuiWindow, kAXSizeAttribute as CFString, size)
-                                    
+                                    result = AXUIElementSetAttributeValue(axuiWindow, kAXSizeAttribute as CFString, size)
+                                    if result != .success {
+                                        print("AXUIElementCopyAttributeValue(kAXTitleAttribute) failed with result: \(result.rawValue), \(result)")
+                                    }
+
                                     usleep(250000)
                                 } else {
                                     print("    No need to move or size.")

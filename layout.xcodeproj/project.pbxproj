@@ -215,7 +215,6 @@
 		OBJ_106 /* Thread.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Thread.swift; sourceTree = "<group>"; };
 		OBJ_107 /* Tuple.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tuple.swift; sourceTree = "<group>"; };
 		OBJ_108 /* misc.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = misc.swift; sourceTree = "<group>"; };
-		OBJ_11 /* layout.xcodeproj.save */ = {isa = PBXFileReference; lastKnownFileType = folder; path = layout.xcodeproj.save; sourceTree = SOURCE_ROOT; };
 		OBJ_110 /* Package.swift */ = {isa = PBXFileReference; explicitFileType = sourcecode.swift; name = Package.swift; path = "/Users/jafischer/src/misc/layout/.build/checkouts/swift-package-manager.git-8098288646704094867/Package.swift"; sourceTree = "<group>"; };
 		OBJ_12 /* layout */ = {isa = PBXFileReference; lastKnownFileType = folder; path = layout; sourceTree = SOURCE_ROOT; };
 		OBJ_20 /* Error.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Error.swift; sourceTree = "<group>"; };
@@ -568,18 +567,16 @@
 			path = ".build/checkouts/swift-package-manager.git-8098288646704094867/Sources/Utility";
 			sourceTree = SOURCE_ROOT;
 		};
-		OBJ_5 /*  */ = {
+		OBJ_5 = {
 			isa = PBXGroup;
 			children = (
 				OBJ_6 /* Package.swift */,
 				OBJ_7 /* Sources */,
 				OBJ_10 /* Tests */,
-				OBJ_11 /* layout.xcodeproj.save */,
 				OBJ_12 /* layout */,
 				OBJ_13 /* Dependencies */,
 				OBJ_111 /* Products */,
 			);
-			name = "";
 			sourceTree = "<group>";
 		};
 		OBJ_60 /* SPMLibc */ = {
@@ -845,6 +842,11 @@
 			isa = PBXProject;
 			attributes = {
 				LastUpgradeCheck = 9999;
+				TargetAttributes = {
+					"layout::layout" = {
+						DevelopmentTeam = 43LKT2N365;
+					};
+				};
 			};
 			buildConfigurationList = OBJ_2 /* Build configuration list for PBXProject "layout" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -853,7 +855,7 @@
 			knownRegions = (
 				en,
 			);
-			mainGroup = OBJ_5 /*  */;
+			mainGroup = OBJ_5;
 			productRefGroup = OBJ_111 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -1372,6 +1374,8 @@
 		OBJ_246 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "Mac Developer";
+				DEVELOPMENT_TEAM = 43LKT2N365;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PLATFORM_DIR)/Developer/Library/Frameworks",
@@ -1424,7 +1428,7 @@
 			buildSettings = {
 				LD = /usr/bin/true;
 				OTHER_SWIFT_FLAGS = "-swift-version 4 -I $(TOOLCHAIN_DIR)/usr/lib/swift/pm/4 -target x86_64-apple-macosx10.10 -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 4.2;
 			};
 			name = Debug;
 		};
@@ -1433,7 +1437,7 @@
 			buildSettings = {
 				LD = /usr/bin/true;
 				OTHER_SWIFT_FLAGS = "-swift-version 4 -I $(TOOLCHAIN_DIR)/usr/lib/swift/pm/4 -target x86_64-apple-macosx10.10 -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 4.2;
 			};
 			name = Release;
 		};
