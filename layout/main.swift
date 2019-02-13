@@ -178,125 +178,127 @@ func restoreLayoutsForWindow(screenLayouts: [UInt32: [String: AnyObject]], saved
         }
         
         // Is this owner one of the ones in the layout config? I.e., does this owner exist in the owner map?
-        var cgWindowName = cgWindow["kCGWindowName"] as! String
-        
-        // For each owner there can be several layouts, one for each window in the application. So let's find which one matches the current window.
-        do {
-            var doesMatch = false
-            var regex = NSRegularExpression()
+        if let dictVal = cgWindow["kCGWindowName"] {
+            var cgWindowName = dictVal as! String
             
-            var useRegex = true
-            if let exactMatch = savedWindowLayout["exactMatch"] as? Bool {
-                useRegex = !exactMatch
-            }
-            
-            if useRegex {
-                regex = try NSRegularExpression(pattern: savedWindowLayout["kCGWindowName"] as! String, options: [])
-                doesMatch = regex.numberOfMatches(in: cgWindowName, options: [], range: NSRange(location: 0, length: (cgWindowName as NSString).length)) != 0
-            } else {
-                doesMatch = cgWindowName == savedWindowLayout["kCGWindowName"] as! String
-            }
-            
-            if doesMatch {
-                //
-                // OK so we've found a window that we want to move. So now we have to use the Accessibility API to find the same window.
-                //
+            // For each owner there can be several layouts, one for each window in the application. So let's find which one matches the current window.
+            do {
+                var doesMatch = false
+                var regex = NSRegularExpression()
                 
-                // Get an AXUI handle to the window's process.
-                let axuiApp = AXUIElementCreateApplication(cgWindow["kCGWindowOwnerPID"] as! Int32)
-                
-                // Get the list of the process's windows.
-                var value: AnyObject?
-                var result: AXError = AXUIElementCopyAttributeValue(axuiApp, kAXWindowsAttribute as CFString, &value)
-                
-                if result != .success {
-                    print("AXUIElementCopyAttributeValue(kAXWindowsAttribute) failed with result: \(result.rawValue)".red.bold)
-                    break
+                var useRegex = true
+                if let exactMatch = savedWindowLayout["exactMatch"] as? Bool {
+                    useRegex = !exactMatch
                 }
                 
-                // Enumerate through the windowList to find the matching window.
-                if let windowList = value as? [AXUIElement] {
-                    for axuiWindow in windowList {
-                        var value2: AnyObject?
-                        result = AXUIElementCopyAttributeValue(axuiWindow, kAXTitleAttribute as CFString, &value2)
-                        
-                        if result != .success {
-                            print("AXUIElementCopyAttributeValue(kAXTitleAttribute) failed with result: \(result.rawValue)".red.bold)
-                            break
-                        }
-                        
-                        if let windowTitle = value2 as? String {
-                            //
-                            // Interesting note: this AXUI window title does not always equal the title returned by the CG API above!
-                            // For example, Chrome seems to append " - Chrome" to the window title when returning it to the AXUI... so frustrating.
-                            // So we have to do the whole comparison with the layout config window title again.
-                            //
-                            if useRegex {
-                                doesMatch = regex.numberOfMatches(in: windowTitle, options: [], range: NSRange(location: 0, length: (windowTitle as NSString).length)) != 0
-                            } else {
-                                doesMatch = windowTitle == savedWindowLayout["kCGWindowName"] as! String
+                if useRegex {
+                    regex = try NSRegularExpression(pattern: savedWindowLayout["kCGWindowName"] as! String, options: [])
+                    doesMatch = regex.numberOfMatches(in: cgWindowName, options: [], range: NSRange(location: 0, length: (cgWindowName as NSString).length)) != 0
+                } else {
+                    doesMatch = cgWindowName == savedWindowLayout["kCGWindowName"] as! String
+                }
+                
+                if doesMatch {
+                    //
+                    // OK so we've found a window that we want to move. So now we have to use the Accessibility API to find the same window.
+                    //
+                    
+                    // Get an AXUI handle to the window's process.
+                    let axuiApp = AXUIElementCreateApplication(cgWindow["kCGWindowOwnerPID"] as! Int32)
+                    
+                    // Get the list of the process's windows.
+                    var value: AnyObject?
+                    var result: AXError = AXUIElementCopyAttributeValue(axuiApp, kAXWindowsAttribute as CFString, &value)
+                    
+                    if result != .success {
+                        print("AXUIElementCopyAttributeValue(kAXWindowsAttribute) failed with result: \(result.rawValue)".red.bold)
+                        break
+                    }
+                    
+                    // Enumerate through the windowList to find the matching window.
+                    if let windowList = value as? [AXUIElement] {
+                        for axuiWindow in windowList {
+                            var value2: AnyObject?
+                            result = AXUIElementCopyAttributeValue(axuiWindow, kAXTitleAttribute as CFString, &value2)
+                            
+                            if result != .success {
+                                print("AXUIElementCopyAttributeValue(kAXTitleAttribute) failed with result: \(result.rawValue)".red.bold)
+                                break
                             }
                             
-                            if doesMatch {
-                                if cgWindowName.count > 40 {
-                                    cgWindowName = String(cgWindowName[..<String.Index(encodedOffset: 40)]) + "..."
-                                }
-                                
-                                let desiredBounds = savedWindowLayout["kCGWindowBounds"]!
-                                
-                                // desiredBounds is in screen-relative coordinates. So first we need to find the corresponding screen,
-                                // and then make the coordinates absolute. Well, actually relative to the main screen's (0,0).
-                                var desiredPosition = try convertRelativeCoordsToAbsolute(
-                                    windowPos: CGPoint(x: desiredBounds["X"] as! Int, y: desiredBounds["Y"] as! Int),
-                                    savedDisplayID: savedWindowLayout["displayID"] as! Int,
-                                    screenLayouts: screenLayouts)
-                                
-                                var desiredSize = CGSize(width: desiredBounds["Width"] as! Int, height: desiredBounds["Height"] as! Int)
-                                
-                                // Only move if we need to.
-                                var currentPoint = CGPoint()
-                                var currentSize = CGSize()
-                                
-                                var value3: AnyObject?
-                                result = AXUIElementCopyAttributeValue(axuiWindow, kAXPositionAttribute as CFString, &value3)
-                                AXValueGetValue(value3 as! AXValue, AXValueType.cgPoint, &currentPoint)
-                                result = AXUIElementCopyAttributeValue(axuiWindow, kAXSizeAttribute as CFString, &value3)
-                                AXValueGetValue(value3 as! AXValue, AXValueType.cgSize, &currentSize)
-                                
-                                // Rather than checking for equality, check for "within a couple of pixels" because I've found that after moving,
-                                // the window coords don't always exactly match what I sent.
-                                if (!isClose(x1: currentPoint.x, y1: currentPoint.y, x2: desiredPosition.x, y2: desiredPosition.y)
-                                    || !isClose(x1: currentSize.width, y1: currentSize.height, x2: desiredSize.width, y2: desiredSize.height)) {
-                                    print("Moving [\(ownerName)]\(cgWindowName) from [\(currentPoint.x),\(currentPoint.y)], size [\(currentSize.width), \(currentSize.height)]" +
-                                          " to [\(desiredPosition.x),\(desiredPosition.y)], size [\(desiredSize.width), \(desiredSize.height)]".bold)
-                                    
-                                    let position: CFTypeRef = AXValueCreate(AXValueType(rawValue: kAXValueCGPointType)!, &desiredPosition)!
-                                    result = AXUIElementSetAttributeValue(axuiWindow, kAXPositionAttribute as CFString, position)
-                                    if result != .success {
-                                        print("     AXUIElementCopyAttributeValue(kAXTitleAttribute) failed with result: \(result.rawValue)".red.bold)
-                                    }
-
-                                    let size: CFTypeRef = AXValueCreate(AXValueType(rawValue: kAXValueCGSizeType)!, &desiredSize)!
-                                    result = AXUIElementSetAttributeValue(axuiWindow, kAXSizeAttribute as CFString, size)
-                                    if result != .success {
-                                        print("    AXUIElementCopyAttributeValue(kAXTitleAttribute) failed with result: \(result.rawValue)".red.bold)
-                                    }
-
-                                    usleep(250000)
+                            if let windowTitle = value2 as? String {
+                                //
+                                // Interesting note: this AXUI window title does not always equal the title returned by the CG API above!
+                                // For example, Chrome seems to append " - Chrome" to the window title when returning it to the AXUI... so frustrating.
+                                // So we have to do the whole comparison with the layout config window title again.
+                                //
+                                if useRegex {
+                                    doesMatch = regex.numberOfMatches(in: windowTitle, options: [], range: NSRange(location: 0, length: (windowTitle as NSString).length)) != 0
                                 } else {
-                                    print("No need to move [\(ownerName)]\(cgWindowName)".dim.italic)
+                                    doesMatch = windowTitle == savedWindowLayout["kCGWindowName"] as! String
                                 }
-                                break
+                                
+                                if doesMatch {
+                                    if cgWindowName.count > 40 {
+                                        cgWindowName = String(cgWindowName[..<String.Index(encodedOffset: 40)]) + "..."
+                                    }
+                                    
+                                    let desiredBounds = savedWindowLayout["kCGWindowBounds"]!
+                                    
+                                    // desiredBounds is in screen-relative coordinates. So first we need to find the corresponding screen,
+                                    // and then make the coordinates absolute. Well, actually relative to the main screen's (0,0).
+                                    var desiredPosition = try convertRelativeCoordsToAbsolute(
+                                        windowPos: CGPoint(x: desiredBounds["X"] as! Int, y: desiredBounds["Y"] as! Int),
+                                        savedDisplayID: savedWindowLayout["displayID"] as! Int,
+                                        screenLayouts: screenLayouts)
+                                    
+                                    var desiredSize = CGSize(width: desiredBounds["Width"] as! Int, height: desiredBounds["Height"] as! Int)
+                                    
+                                    // Only move if we need to.
+                                    var currentPoint = CGPoint()
+                                    var currentSize = CGSize()
+                                    
+                                    var value3: AnyObject?
+                                    result = AXUIElementCopyAttributeValue(axuiWindow, kAXPositionAttribute as CFString, &value3)
+                                    AXValueGetValue(value3 as! AXValue, AXValueType.cgPoint, &currentPoint)
+                                    result = AXUIElementCopyAttributeValue(axuiWindow, kAXSizeAttribute as CFString, &value3)
+                                    AXValueGetValue(value3 as! AXValue, AXValueType.cgSize, &currentSize)
+                                    
+                                    // Rather than checking for equality, check for "within a couple of pixels" because I've found that after moving,
+                                    // the window coords don't always exactly match what I sent.
+                                    if (!isClose(x1: currentPoint.x, y1: currentPoint.y, x2: desiredPosition.x, y2: desiredPosition.y)
+                                        || !isClose(x1: currentSize.width, y1: currentSize.height, x2: desiredSize.width, y2: desiredSize.height)) {
+                                        print("Moving [\(ownerName)]\(cgWindowName) from [\(currentPoint.x),\(currentPoint.y)], size [\(currentSize.width), \(currentSize.height)]" +
+                                            " to [\(desiredPosition.x),\(desiredPosition.y)], size [\(desiredSize.width), \(desiredSize.height)]".bold)
+                                        
+                                        let position: CFTypeRef = AXValueCreate(AXValueType(rawValue: kAXValueCGPointType)!, &desiredPosition)!
+                                        result = AXUIElementSetAttributeValue(axuiWindow, kAXPositionAttribute as CFString, position)
+                                        if result != .success {
+                                            print("     AXUIElementCopyAttributeValue(kAXTitleAttribute) failed with result: \(result.rawValue)".red.bold)
+                                        }
+                                        
+                                        let size: CFTypeRef = AXValueCreate(AXValueType(rawValue: kAXValueCGSizeType)!, &desiredSize)!
+                                        result = AXUIElementSetAttributeValue(axuiWindow, kAXSizeAttribute as CFString, size)
+                                        if result != .success {
+                                            print("    AXUIElementCopyAttributeValue(kAXTitleAttribute) failed with result: \(result.rawValue)".red.bold)
+                                        }
+                                        
+                                        usleep(250000)
+                                    } else {
+                                        print("No need to move [\(ownerName)]\(cgWindowName)".dim.italic)
+                                    }
+                                    break
+                                }
                             }
                         }
                     }
-                }
-                
-                break
-            } // if doesMatch
-        } catch {
-            print("Error while processing window \(cgWindow): \(error)")
-        }
+                    
+                    break
+                } // if doesMatch
+            } catch {
+                print("Error while processing window \(cgWindow): \(error)")
+            }
+        } // if let
     } // for cgWindow in desktopWindowList
 } // func restoreLayoutsForWindow
 
