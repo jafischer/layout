@@ -46,6 +46,13 @@ extension NSScreen {
 }
 
 
+func debugLog(_ message: String) {
+    if debugLogging {
+        print(message.blue.bold)
+    }
+}
+
+
 func dumpScreens() {
     print("  \"screens\": [")
     
@@ -82,6 +89,7 @@ func screenOriginForWindow(windowBounds: CGRect) -> (CGDirectDisplayID, CGRect) 
     return (0, CGRect())
 }
 
+
 func dumpWindows(windowList: [[String: AnyObject]]) {
     print("  \"windows\": [")
     
@@ -109,6 +117,7 @@ func dumpWindows(windowList: [[String: AnyObject]]) {
     print("  ]")
 }
 
+
 func readLayoutConfig() -> ([UInt32: [String: AnyObject]], [[String: AnyObject]]) {
     var screenLayouts = [UInt32: [String: AnyObject]]()
     var desiredWindowLayouts = [[String: AnyObject]]()
@@ -135,9 +144,11 @@ func readLayoutConfig() -> ([UInt32: [String: AnyObject]], [[String: AnyObject]]
     return (screenLayouts, desiredWindowLayouts)
 }
 
+
 func isClose(x1: CGFloat, y1: CGFloat, x2: CGFloat, y2: CGFloat) -> Bool {
     return abs(x1 - x2) < 4 && abs(y1 - y2) < 4;
 }
+
 
 func convertRelativeCoordsToAbsolute(windowPos: CGPoint, savedDisplayID: Int, screenLayouts: [UInt32: [String: AnyObject]]) throws -> CGPoint {
     let mainScreenRect = NSScreen.screens.first!.frame
@@ -150,7 +161,7 @@ func convertRelativeCoordsToAbsolute(windowPos: CGPoint, savedDisplayID: Int, sc
     }
     
     if targetScreen == nil {
-        // TODO: jafischer-2019-02-12 compared savedLayouts to current window layout, find closest one.
+        // TODO: jafischer-2019-02-12 compared saved screen bounds to current screens, find closest one.
         throw NSError(domain: "Failed to find target screen", code: 2)
     }
     
@@ -164,7 +175,9 @@ func convertRelativeCoordsToAbsolute(windowPos: CGPoint, savedDisplayID: Int, sc
                    y: windowPos.y + CGFloat(screenRect.origin.y))
 }
 
-func findAXUIWindow(cgWindow: [String: AnyObject], useRegex: Bool, regex: NSRegularExpression, savedWindowLayoutName: String) -> AXUIElement? {
+
+func findAXUIWindow(cgWindow: [String: AnyObject], useRegex: Bool, regex: NSRegularExpression, windowName: String)
+        -> AXUIElement? {
     // Get an AXUI handle to the window's process.
     guard let windowPid = cgWindow["kCGWindowOwnerPID"] as? Int32 else { 
         print("Failed to determine pid for window.".red.bold)
@@ -203,29 +216,50 @@ func findAXUIWindow(cgWindow: [String: AnyObject], useRegex: Bool, regex: NSRegu
         //
         // Interesting note: this AXUI window title does not always equal the title returned by the CG API above!
         // For example, Chrome seems to append " - Chrome" to the window title when returning it to the AXUI... so frustrating.
-        // So we have to do the whole comparison with the layout config window title again.
         //
-        var doesMatch: Bool
-        if useRegex {
-            doesMatch = regex.numberOfMatches(in: windowTitle, options: [], range: NSRange(location: 0, length: (windowTitle as NSString).length)) != 0
-        } else {
-            doesMatch = windowTitle == savedWindowLayoutName
-        }
-        
-        if doesMatch {
-            return axuiWindow
+        if windowTitle == windowName || windowTitle == windowName + " - Chrome" {
+            // Can't just compare names, because some apps will have multiple windows with the same name (e.g. the "Project" window
+            // in IntelliJ).
+            var axuiPos = CGPoint()
+            var axuiSize = CGSize()
+
+            var value3: AnyObject?
+            var result = AXUIElementCopyAttributeValue(axuiWindow, kAXPositionAttribute as CFString, &value3)
+
+            if result != .success {
+                print("     AXUIElementCopyAttributeValue(kAXPositionAttribute) failed with result: \(result.rawValue)".red.bold)
+                continue
+            }
+
+            AXValueGetValue(value3 as! AXValue, AXValueType.cgPoint, &axuiPos)
+            result = AXUIElementCopyAttributeValue(axuiWindow, kAXSizeAttribute as CFString, &value3)
+            AXValueGetValue(value3 as! AXValue, AXValueType.cgSize, &axuiSize)
+
+            if result != .success {
+                print("     AXUIElementCopyAttributeValue(kAXSizeAttribute) failed with result: \(result.rawValue)".red.bold)
+                continue
+            }
+            
+            let cgWindowBounds = CGRect(dictionaryRepresentation: cgWindow["kCGWindowBounds"] as! CFDictionary)!
+
+            if axuiPos.equalTo(cgWindowBounds.origin) && axuiSize.equalTo(cgWindowBounds.size) {
+                return axuiWindow
+            }
         }
     } // for axuiWindow
 
     return nil
 }
 
+
 func restoreLayoutsForWindow(cgWindow: [String: AnyObject],
                              layoutsToRestore: [[String: AnyObject]],
                              screenLayouts: [UInt32: [String: AnyObject]]) {
     guard let cgOwnerName = cgWindow["kCGWindowOwnerName"] as? String else { return }
     guard var cgWindowName = cgWindow["kCGWindowName"] as? String else { return }
-            
+
+    debugLog("Checking [\(cgOwnerName)]\(cgWindowName)")
+
     for savedWindowLayout in layoutsToRestore {
         do {
             if savedWindowLayout["kCGWindowOwnerName"] as! String != cgOwnerName {
@@ -258,7 +292,7 @@ func restoreLayoutsForWindow(cgWindow: [String: AnyObject],
                 guard let axuiWindow = findAXUIWindow(cgWindow: cgWindow,
                                                       useRegex: useRegex,
                                                       regex: regex,
-                                                      savedWindowLayoutName: savedWindowLayout["kCGWindowName"] as! String)
+                                                      windowName: cgWindowName)
                     else { return }
                 
                 if cgWindowName.count > 40 {
@@ -285,7 +319,10 @@ func restoreLayoutsForWindow(cgWindow: [String: AnyObject],
                 AXValueGetValue(value3 as! AXValue, AXValueType.cgPoint, &currentPoint)
                 result = AXUIElementCopyAttributeValue(axuiWindow, kAXSizeAttribute as CFString, &value3)
                 AXValueGetValue(value3 as! AXValue, AXValueType.cgSize, &currentSize)
-                
+
+                debugLog("currentPos: \(currentPoint.x), \(currentPoint.y); desiredPos: \(desiredPosition.x), \(desiredPosition.y)")
+                debugLog("currentSize: \(currentSize.width), \(currentSize.height); desiredSize: \(desiredSize.width), \(desiredSize.height)")
+
                 // Rather than checking for equality, check for "within a couple of pixels" because I've found that after moving,
                 // the window coords don't always exactly match what I sent.
                 if (!isClose(x1: currentPoint.x, y1: currentPoint.y, x2: desiredPosition.x, y2: desiredPosition.y)
@@ -317,6 +354,7 @@ func restoreLayoutsForWindow(cgWindow: [String: AnyObject],
 } // func restoreLayoutsForWindow
 
 
+//=====================================================================================================================
 //
 // The two high level functions to save or restore the window layout.
 //
@@ -330,11 +368,12 @@ func saveLayout(windowList: [[String: AnyObject]]) {
     print("}")
 }
 
+
 func restoreLayout(windowList: [[String: AnyObject]]) {
     let (screenLayouts, layoutsToRestore) = readLayoutConfig()
 
     //
-    // Enumerage all desktop windows.
+    // Enumerate all desktop windows.
     //
     let listOptions = CGWindowListOption(arrayLiteral: CGWindowListOption.excludeDesktopElements, CGWindowListOption.optionOnScreenOnly)
     let desktopWindowList = CGWindowListCopyWindowInfo(listOptions, CGWindowID(0)) as! [[String: AnyObject]]
@@ -345,6 +384,7 @@ func restoreLayout(windowList: [[String: AnyObject]]) {
 }
 
 
+//=====================================================================================================================
 //
 // Main
 //
