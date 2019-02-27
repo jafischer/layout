@@ -32,7 +32,10 @@ I'm going to assume that you have a `bin` directory under your HOME directory,
 and that it's in your path. If you want it somewhere else, e.g. `/usr/local/bin`, 
 then adjust the instructions accordingly.
 
-**One time step**: copy the framework libraries that it uses:
+To build, just run the `build.sh` script (modifying the path in the script 
+from `~/bin` if necessary.)
+
+**One time step**: after your first successful build, copy the framework libraries that it uses:
 
 ```bash
 for f in clibc SPMLibc POSIX Basic Utility ; do
@@ -40,11 +43,9 @@ for f in clibc SPMLibc POSIX Basic Utility ; do
 done 
 ```
 
-**Next**: to build, just run the `build.sh` script (modifying the path in the script 
-from `~/bin` if necessary.)
-
 Also you'll need to add it as an 
-Accessibility application (System Preferences --> Security & Privacy --> Privacy 
+Accessibility application  
+(System Preferences --> Security & Privacy --> Privacy 
 tab --> Select the "Accessibility" entry from the list).
 
 ## Usage
