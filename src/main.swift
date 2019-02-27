@@ -16,7 +16,8 @@ func debugLog(_ message: String) {
 ///
 /// - returns: the CGWindowList, an array of dictionaries.
 func getCgWindowList() -> [[String: AnyObject]] {
-    let listOptions = CGWindowListOption(arrayLiteral: CGWindowListOption.excludeDesktopElements, CGWindowListOption.optionOnScreenOnly)
+    let listOptions = CGWindowListOption(arrayLiteral: CGWindowListOption.excludeDesktopElements,
+                                                       CGWindowListOption.optionOnScreenOnly)
     let cgWindowList: NSArray = CGWindowListCopyWindowInfo(listOptions, CGWindowID(0))!
     return cgWindowList as NSArray as! [[String:AnyObject]]
 }
@@ -124,7 +125,7 @@ func readLayoutConfig() -> ([UInt32: [String: AnyObject]], [[String: AnyObject]]
             desiredWindowLayouts.append(window)
         }
     } catch {
-        print("Error reading layout config! \(error)".red.bold)
+        print("Error reading layout config:\n\(error)".red.bold)
     }
     
     return (screenLayouts, desiredWindowLayouts)
@@ -203,7 +204,7 @@ func findAXUIWindow(cgWindow: [String: AnyObject], useRegex: Bool, regex: NSRegu
     var result: AXError = AXUIElementCopyAttributeValue(axuiApp, kAXWindowsAttribute as CFString, &value)
     
     if result != .success {
-        print("AXUIElementCopyAttributeValue(kAXWindowsAttribute) failed with result: \(result.rawValue)".red.bold)
+        print("AXUIElementCopyAttributeValue(kAXWindowsAttribute) failed: \(result.rawValue)".red.bold)
         return nil
     }
     
@@ -218,7 +219,7 @@ func findAXUIWindow(cgWindow: [String: AnyObject], useRegex: Bool, regex: NSRegu
         result = AXUIElementCopyAttributeValue(axuiWindow, kAXTitleAttribute as CFString, &value2)
         
         if result != .success {
-            print("AXUIElementCopyAttributeValue(kAXTitleAttribute) failed with result: \(result.rawValue)".red.bold)
+            print("AXUIElementCopyAttributeValue(kAXTitleAttribute) failed: \(result.rawValue)".red.bold)
             continue
         }
         
@@ -238,7 +239,7 @@ func findAXUIWindow(cgWindow: [String: AnyObject], useRegex: Bool, regex: NSRegu
             var result = AXUIElementCopyAttributeValue(axuiWindow, kAXPositionAttribute as CFString, &value3)
 
             if result != .success {
-                print("     AXUIElementCopyAttributeValue(kAXPositionAttribute) failed with result: \(result.rawValue)".red.bold)
+                print("     AXUIElementCopyAttributeValue(kAXPositionAttribute) failed: \(result.rawValue)".red.bold)
                 continue
             }
 
@@ -247,7 +248,7 @@ func findAXUIWindow(cgWindow: [String: AnyObject], useRegex: Bool, regex: NSRegu
             AXValueGetValue(value3 as! AXValue, AXValueType.cgSize, &axuiSize)
 
             if result != .success {
-                print("     AXUIElementCopyAttributeValue(kAXSizeAttribute) failed with result: \(result.rawValue)".red.bold)
+                print("     AXUIElementCopyAttributeValue(kAXSizeAttribute) failed: \(result.rawValue)".red.bold)
                 continue
             }
             
@@ -292,18 +293,23 @@ func restoreLayoutForWindow(cgWindow: [String: AnyObject],
             
             if useRegex {
                 regex = try NSRegularExpression(pattern: savedWindowLayout["kCGWindowName"] as! String, options: [])
-                doesMatch = regex.numberOfMatches(in: cgWindowName, options: [], range: NSRange(location: 0, length: (cgWindowName as NSString).length)) != 0
+                doesMatch = regex.numberOfMatches(in: cgWindowName,
+                                                  options: [],
+                                                  range: NSRange(location: 0,
+                                                                 length: (cgWindowName as NSString).length)) != 0
             } else {
                 doesMatch = cgWindowName == savedWindowLayout["kCGWindowName"] as! String
             }
             
             if doesMatch {
                 //
-                // One complication here is that we have to enumerate all desktop windows using the CGWindowList... API, and yet we have
-                // to use an entirely different API (the Accessibility API) to actually move the windows. (There's no way to enumerate all
-                // desktop windows with the Accessibility API -- well, at least not easily).
+                // One complication here is that we have to enumerate all desktop windows using the CGWindowList API,
+                // and yet we have to use an entirely different API (the Accessibility API) to actually move the
+                // windows. (There's no way to enumerate all desktop windows with the Accessibility API -- well,
+                // at least not easily).
                 //
-                // OK so we've found a window that we want to move. So now we have to use the Accessibility API to find the same window.
+                // OK so we've found a window that we want to move. So now we have to use the Accessibility API
+                // to find the same window.
                 //
                 guard let axuiWindow = findAXUIWindow(cgWindow: cgWindow,
                                                       useRegex: useRegex,
@@ -319,7 +325,7 @@ func restoreLayoutForWindow(cgWindow: [String: AnyObject],
                 
                 // desiredBounds is in screen-relative coordinates. So first we need to find the corresponding screen,
                 // and then make the coordinates absolute. Well, actually relative to the main screen's (0,0).
-                var desiredPosition = try convertRelativeCoordsToAbsolute(
+                var desiredPos = try convertRelativeCoordsToAbsolute(
                     windowPos: CGPoint(x: desiredBounds["X"] as! Int, y: desiredBounds["Y"] as! Int),
                     savedDisplayID: savedWindowLayout["displayID"] as! Int,
                     screenLayouts: screenLayouts)
@@ -327,35 +333,39 @@ func restoreLayoutForWindow(cgWindow: [String: AnyObject],
                 var desiredSize = CGSize(width: desiredBounds["Width"] as! Int, height: desiredBounds["Height"] as! Int)
                 
                 // Only move if we need to.
-                var currentPoint = CGPoint()
+                var currentPos = CGPoint()
                 var currentSize = CGSize()
                 
                 var value3: AnyObject?
                 var result = AXUIElementCopyAttributeValue(axuiWindow, kAXPositionAttribute as CFString, &value3)
-                AXValueGetValue(value3 as! AXValue, AXValueType.cgPoint, &currentPoint)
+                AXValueGetValue(value3 as! AXValue, AXValueType.cgPoint, &currentPos)
                 result = AXUIElementCopyAttributeValue(axuiWindow, kAXSizeAttribute as CFString, &value3)
                 AXValueGetValue(value3 as! AXValue, AXValueType.cgSize, &currentSize)
 
-                debugLog("currentPos: \(currentPoint.x), \(currentPoint.y); desiredPos: \(desiredPosition.x), \(desiredPosition.y)")
-                debugLog("currentSize: \(currentSize.width), \(currentSize.height); desiredSize: \(desiredSize.width), \(desiredSize.height)")
+                debugLog("currentPos: \(currentPos.x), \(currentPos.y)")
+                debugLog("desiredPos: \(desiredPos.x), \(desiredPos.y)")
+                debugLog("currentSize: \(currentSize.width), \(currentSize.height)")
+                debugLog("desiredSize: \(desiredSize.width), \(desiredSize.height)")
 
-                // Rather than checking for equality, check for "within a couple of pixels" because I've found that after moving,
-                // the window coords don't always exactly match what I sent.
-                if (!isClose(x1: currentPoint.x, y1: currentPoint.y, x2: desiredPosition.x, y2: desiredPosition.y)
-                    || !isClose(x1: currentSize.width, y1: currentSize.height, x2: desiredSize.width, y2: desiredSize.height)) {
-                    print("Moving [\(cgOwnerName)]\(cgWindowName) from [\(currentPoint.x),\(currentPoint.y)], size [\(currentSize.width), \(currentSize.height)]" +
-                        " to [\(desiredPosition.x),\(desiredPosition.y)], size [\(desiredSize.width), \(desiredSize.height)]".bold)
+                // Rather than checking for equality, check for "within a couple of pixels" because I've found
+                // that after moving, the window coords don't always exactly match what I sent.
+                if (!isClose(x1:currentPos.x, y1:currentPos.y, x2:desiredPos.x, y2:desiredPos.y) ||
+                    !isClose(x1:currentSize.width, y1:currentSize.height, x2:desiredSize.width, y2:desiredSize.height)) {
+                    print("Moving [\(cgOwnerName)]\(cgWindowName) from [\(currentPos.x),\(currentPos.y)], " +
+                          "size [\(currentSize.width), \(currentSize.height)]" +
+                          " to [\(desiredPos.x),\(desiredPos.y)], " +
+                          "size [\(desiredSize.width), \(desiredSize.height)]".bold)
                     
-                    let position: CFTypeRef = AXValueCreate(AXValueType(rawValue: kAXValueCGPointType)!, &desiredPosition)!
+                    let position: CFTypeRef = AXValueCreate(AXValueType(rawValue: kAXValueCGPointType)!, &desiredPos)!
                     result = AXUIElementSetAttributeValue(axuiWindow, kAXPositionAttribute as CFString, position)
                     if result != .success {
-                        print("     AXUIElementCopyAttributeValue(kAXTitleAttribute) failed with result: \(result.rawValue)".red.bold)
+                        print("     AXUIElementCopyAttributeValue(kAXTitleAttribute) failed: \(result.rawValue)".red.bold)
                     }
                     
                     let size: CFTypeRef = AXValueCreate(AXValueType(rawValue: kAXValueCGSizeType)!, &desiredSize)!
                     result = AXUIElementSetAttributeValue(axuiWindow, kAXSizeAttribute as CFString, size)
                     if result != .success {
-                        print("    AXUIElementCopyAttributeValue(kAXTitleAttribute) failed with result: \(result.rawValue)".red.bold)
+                        print("    AXUIElementCopyAttributeValue(kAXTitleAttribute) failed: \(result.rawValue)".red.bold)
                     }
                     
                     usleep(250000)
@@ -408,8 +418,13 @@ func doRestore() {
 let arguments = Array(ProcessInfo.processInfo.arguments.dropFirst())
 
 let parser = ArgumentParser(usage: "<options>", overview: "Saves and restores window layout.")
-let saveFlag: OptionArgument<Bool> = parser.add(option: "--save", shortName: "-s", kind: Bool.self, usage: "Print the window layout to stdout (if not specified, default action is to restore layout from ~/.layout.json)")
-let debugFlag: OptionArgument<Bool> = parser.add(option: "--debug", shortName: "-d", kind: Bool.self, usage: "Debug logging")
+let saveFlag: OptionArgument<Bool> = parser.add(option: "--save", shortName: "-s",
+                                                kind: Bool.self,
+                                                usage: "Print the window layout to stdout (if not specified, default action is to restore layout from ~/.layout.json)")
+let debugFlag: OptionArgument<Bool> = parser.add(option: "--debug",
+                                                 shortName: "-d",
+                                                 kind: Bool.self,
+                                                 usage: "Debug logging")
 
 let parsedArguments = try parser.parse(arguments)
 
