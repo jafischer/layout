@@ -1,6 +1,8 @@
 # layout 
-### A tool for restoring your carefully-arranged application windows on your MacBook, after disconnecting and reconnecting external monitors.
+
+### A tool for restoring your carefully-arranged application windows on your MacBook, after disconnecting and reconnecting external monitors. 
 ---
+
 ## Background
 
 Let's face it, MacBooks are not great at managing multiple monitors.
@@ -34,14 +36,6 @@ then adjust the instructions accordingly.
 
 To build, just run the `build.sh` script (modifying the path in the script 
 from `~/bin` if necessary.)
-
-**One time step**: after your first successful build, copy the framework libraries that it uses:
-
-```bash
-for f in clibc SPMLibc POSIX Basic Utility ; do
-  cp -rp .build/x86_64-apple-macosx10.10/debug/$f.framework ~/bin/
-done 
-```
 
 Also you'll need to add it as an 
 Accessibility application  
