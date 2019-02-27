@@ -13,7 +13,7 @@ applications' windows are arranged -- it fails miserably.
 Hence this app. I wrote it because I once wrote a similar app for Windows, and I was
 curious how hard it would be to write one for OSX (spoiler alert: **way** harder). 
 
-Also I wanted to dabble in Swift. Which, I have to say, I really like. 
+Also I wanted to dabble in [Swift](https://swift.org/) . Which, I have to say, I really like. 
 
 Cocoa... not so much.
 
@@ -40,8 +40,8 @@ for f in clibc SPMLibc POSIX Basic Utility ; do
 done 
 ```
 
-Next, to build, just run the `build.sh` script (modifying the path from `~/bin` 
-if necessary.)
+**Next**: to build, just run the `build.sh` script (modifying the path in the script 
+from `~/bin` if necessary.)
 
 Also you'll need to add it as an 
 Accessibility application (System Preferences --> Security & Privacy --> Privacy 
@@ -49,10 +49,11 @@ tab --> Select the "Accessibility" entry from the list).
 
 ## Usage
 
-#### 1: Saving your desired layout 
+#### Saving your current layout 
 
 1. First run `layout --save > ~/.layout.json` to have it save the current window layout.
-1. Next (yeah this is a klunky manual step) edit the file you just saved (`~/.layout.json`), 
+1. Next (yeah this is a pretty tedious manual step) 
+   edit the file you just saved (`~/.layout.json`), 
    and remove the entries for all of the windows you don't care about.  
    Example: remove entries like this:
    ```
@@ -63,10 +64,17 @@ tab --> Select the "Accessibility" entry from the list).
       "kCGWindowBounds": {"X":1486,"Y":0,"Width":32,"Height":22}
     },
    ```
-1. Next (and even klunkier), if you have some windows whose title might change over time, 
-   for instance based on what file or project is open in your IDE, then you can edit their 
-   entries and use regular expressions as the window name, by adding `"exactMatch": false,`
-   for example:
+1. Next (and even klunkier), for all the windows whose title might change 
+   over time -- for instance when the window title contains the name of the
+   file being edited -- 
+   then you can edit the entries for these windows and use 
+   [regular expressions](https://medium.com/factory-mind/regex-tutorial-a-simple-cheatsheet-by-examples-649dc1c3f285) 
+   in the window name field, by adding **`"exactMatch": false,`** to the entry.
+   
+   If you're not too familiar with regular expressions, the simplest one is `.*`, 
+   which matches any text. 
+   
+   For example:
    ```
    {
      "exactMatch": false,
@@ -88,10 +96,9 @@ tab --> Select the "Accessibility" entry from the list).
     },
    ```
    
-#### 2: Restoring your layout
+#### Restoring your layout
 
 Just run `layout` with no arguments.
-
 
 ## Author
 

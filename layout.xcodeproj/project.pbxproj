@@ -216,7 +216,7 @@
 		OBJ_107 /* Tuple.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tuple.swift; sourceTree = "<group>"; };
 		OBJ_108 /* misc.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = misc.swift; sourceTree = "<group>"; };
 		OBJ_110 /* Package.swift */ = {isa = PBXFileReference; explicitFileType = sourcecode.swift; name = Package.swift; path = "/Users/jafischer/src/misc/layout/.build/checkouts/swift-package-manager.git-8098288646704094867/Package.swift"; sourceTree = "<group>"; };
-		OBJ_12 /* layout */ = {isa = PBXFileReference; lastKnownFileType = folder; path = layout; sourceTree = SOURCE_ROOT; };
+		OBJ_12 /* src */ = {isa = PBXFileReference; lastKnownFileType = folder; path = src; sourceTree = SOURCE_ROOT; };
 		OBJ_20 /* Error.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Error.swift; sourceTree = "<group>"; };
 		OBJ_21 /* chdir.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = chdir.swift; sourceTree = "<group>"; };
 		OBJ_22 /* env.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = env.swift; sourceTree = "<group>"; };
@@ -573,7 +573,7 @@
 				OBJ_6 /* Package.swift */,
 				OBJ_7 /* Sources */,
 				OBJ_10 /* Tests */,
-				OBJ_12 /* layout */,
+				OBJ_12 /* src */,
 				OBJ_13 /* Dependencies */,
 				OBJ_111 /* Products */,
 			);
@@ -634,7 +634,7 @@
 		OBJ_7 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
-				OBJ_8 /* layout */,
+				OBJ_8 /* src */,
 			);
 			name = Sources;
 			sourceTree = SOURCE_ROOT;
@@ -685,12 +685,12 @@
 			path = ".build/checkouts/swift-package-manager.git-8098288646704094867/Sources/Basic";
 			sourceTree = SOURCE_ROOT;
 		};
-		OBJ_8 /* layout */ = {
+		OBJ_8 /* src */ = {
 			isa = PBXGroup;
 			children = (
 				OBJ_9 /* main.swift */,
 			);
-			path = layout;
+			path = src;
 			sourceTree = SOURCE_ROOT;
 		};
 /* End PBXGroup section */

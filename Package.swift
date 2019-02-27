@@ -8,5 +8,5 @@ let package = Package(name: "layout",
             .package(url: "https://github.com/onevcat/Rainbow", from: "3.0.0")
         ],
         targets: [
-            .target(name: "layout", dependencies: ["Utility", "Rainbow"], path: "layout"),
+            .target(name: "layout", dependencies: ["Utility", "Rainbow"], path: "src"),
         ])

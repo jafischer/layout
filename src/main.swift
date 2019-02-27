@@ -5,46 +5,6 @@ import Rainbow
 
 var debugLogging: Bool = false
 
-// From https://gist.github.com/salexkidd/bcbea2372e92c6e5b04cbd7f48d9b204
-extension NSScreen {
-    public var displayID: CGDirectDisplayID {
-        get {
-            return deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as! CGDirectDisplayID
-        }
-    }
-    
-    
-    public var displayName: String {
-        get {
-            var name = "Unknown"
-            var object : io_object_t
-            var serialPortIterator = io_iterator_t()
-            let matching = IOServiceMatching("IODisplayConnect")
-            
-            let kernResult = IOServiceGetMatchingServices(kIOMasterPortDefault, matching, &serialPortIterator)
-            if KERN_SUCCESS == kernResult && serialPortIterator != 0 {
-                repeat {
-                    object = IOIteratorNext(serialPortIterator)
-                    let displayInfo = IODisplayCreateInfoDictionary(object, UInt32(kIODisplayOnlyPreferredName)).takeRetainedValue() as NSDictionary as! [String:AnyObject]
-                    
-                    if  (displayInfo[kDisplayVendorID] as? UInt32 == CGDisplayVendorNumber(displayID) &&
-                        displayInfo[kDisplayProductID] as? UInt32 == CGDisplayModelNumber(displayID) &&
-                        displayInfo[kDisplaySerialNumber] as? UInt32 ?? 0 == CGDisplaySerialNumber(displayID)
-                        ) {
-                        if let productName = displayInfo["DisplayProductName"] as? [String:String],
-                            let firstKey = Array(productName.keys).first {
-                            name = productName[firstKey]!
-                            break
-                        }
-                    }
-                } while object != 0
-            }
-            IOObjectRelease(serialPortIterator)
-            return name
-        }
-    }
-}
-
 
 func debugLog(_ message: String) {
     if debugLogging {
@@ -52,8 +12,22 @@ func debugLog(_ message: String) {
     }
 }
 
+/// Fetches the info for all desktop windows.
+///
+/// - returns: the CGWindowList, an array of dictionaries.
+func getCgWindowList() -> [[String: AnyObject]] {
+    let listOptions = CGWindowListOption(arrayLiteral: CGWindowListOption.excludeDesktopElements, CGWindowListOption.optionOnScreenOnly)
+    let cgWindowList: NSArray = CGWindowListCopyWindowInfo(listOptions, CGWindowID(0))!
+    return cgWindowList as NSArray as! [[String:AnyObject]]
+}
 
-func dumpScreens() {
+
+/// Saves the positions of all screens.
+///
+/// This is needed so that we can save each window's layout as relative to its current screen.
+/// Then, if the screen positions are ever adjusted, we can still restore the window to the same
+/// position on the screen.
+func saveScreenBounds() {
     print("  \"screens\": [")
     
     for screen in NSScreen.screens {
@@ -72,13 +46,18 @@ func dumpScreens() {
 }
 
 
+/// Determines which screen the given window resides on.
+///
+/// - parameter windowBounds: the window's rectangle
+///
+/// - returns: the display ID and the rectangle for the window's screen.
 func screenOriginForWindow(windowBounds: CGRect) -> (CGDirectDisplayID, CGRect) {
     let mainScreenRect = NSScreen.screens.first!.frame
     for screen in NSScreen.screens {
-        var screenRect: NSRect = screen.frame
+        var screenRect: CGRect = screen.frame
         
-        // Unbelievably, NSScreen coordinates are different from CGWindow coordinates! NSScreen 0,0 is bottom-left, and
-        // CGWindow is top-left. O.o
+        // Unbelievably, NSScreen coordinates are different from CGWindow coordinates! NSScreen 0,0 is bottom-left,
+        // and CGWindow is top-left. O.o
         screenRect.origin.y = NSMaxY(mainScreenRect) - NSMaxY(screenRect)
 
         if screenRect.contains(windowBounds.origin) {
@@ -90,10 +69,11 @@ func screenOriginForWindow(windowBounds: CGRect) -> (CGDirectDisplayID, CGRect) 
 }
 
 
-func dumpWindows(windowList: [[String: AnyObject]]) {
+/// Saves (prints to stdout) the layout of all windows.
+func saveWindowLayouts() {
     print("  \"windows\": [")
     
-    for window in windowList {
+    for window in getCgWindowList() {
         var windowBounds = CGRect(dictionaryRepresentation: window["kCGWindowBounds"] as! CFDictionary)!
         let (displayID, screenBounds) = screenOriginForWindow(windowBounds: windowBounds)
         
@@ -118,9 +98,15 @@ func dumpWindows(windowList: [[String: AnyObject]]) {
 }
 
 
+/// Reads the ~/.layout.json file.
+///
+/// - returns: A tuple containing: a dictionary of information for each screen,
+///            followed by an array of dictionaries containing information
+///            about each desired window layout.
 func readLayoutConfig() -> ([UInt32: [String: AnyObject]], [[String: AnyObject]]) {
     var screenLayouts = [UInt32: [String: AnyObject]]()
     var desiredWindowLayouts = [[String: AnyObject]]()
+
     do {
         let jsonString = try String(contentsOfFile: "/Users/jafischer/.layout.json", encoding: String.Encoding.utf8)
         let data: Data = jsonString.data(using: String.Encoding.utf8)!
@@ -145,12 +131,29 @@ func readLayoutConfig() -> ([UInt32: [String: AnyObject]], [[String: AnyObject]]
 }
 
 
+/// Determines if a position is "close" to another (within 4 pixels).
+///
+/// - parameter x1: X coordinate of the first position.
+/// - parameter y1: Y coordinate of the first position.
+/// - parameter x2: X coordinate of the second position.
+/// - parameter y2: Y coordinate of the second position.
+///
+/// - returns: true or false to indicate closeness.
 func isClose(x1: CGFloat, y1: CGFloat, x2: CGFloat, y2: CGFloat) -> Bool {
     return abs(x1 - x2) < 4 && abs(y1 - y2) < 4;
 }
 
 
-func convertRelativeCoordsToAbsolute(windowPos: CGPoint, savedDisplayID: Int, screenLayouts: [UInt32: [String: AnyObject]]) throws -> CGPoint {
+/// Converts screen-relative coordinates to absolute (i.e. relative to the primary screen).
+///
+/// - parameter windowPos: CGPoint containing the relative coordinates of the window.
+/// - parameter savedDisplayID: the ID of the original screen that the coordinates are relative to.
+/// - parameter screenLayouts: the saved screen layouts.
+///
+/// - returns: a CGPoint containing the absolute coordinates.
+func convertRelativeCoordsToAbsolute(windowPos: CGPoint,
+                                     savedDisplayID: Int,
+                                     screenLayouts: [UInt32: [String: AnyObject]]) throws -> CGPoint {
     let mainScreenRect = NSScreen.screens.first!.frame
     var targetScreen: NSScreen? = nil
     for screen in NSScreen.screens {
@@ -165,7 +168,7 @@ func convertRelativeCoordsToAbsolute(windowPos: CGPoint, savedDisplayID: Int, sc
         throw NSError(domain: "Failed to find target screen", code: 2)
     }
     
-    var screenRect: NSRect = targetScreen!.frame
+    var screenRect: CGRect = targetScreen!.frame
     
     // Unbelievably, NSScreen coordinates are different from CGWindow coordinates! NSScreen 0,0 is bottom-left, and
     // CGWindow is top-left. O.o
@@ -176,6 +179,14 @@ func convertRelativeCoordsToAbsolute(windowPos: CGPoint, savedDisplayID: Int, sc
 }
 
 
+/// Finds the AXUI window that matches the given CGWindow.
+///
+/// - parameter cgWindow: a CGWindow dictionary.
+/// - parameter useRegex: indicates whether to use exact match or regex on the window title.
+/// - parameter regex: the NSRegularExpression for the window title, if applicable.
+/// - parameter windowName: the exact window title, if applicable.
+///
+/// - returns: an AXUIElement for the window, or nil if not found.
 func findAXUIWindow(cgWindow: [String: AnyObject], useRegex: Bool, regex: NSRegularExpression, windowName: String)
         -> AXUIElement? {
     // Get an AXUI handle to the window's process.
@@ -215,11 +226,11 @@ func findAXUIWindow(cgWindow: [String: AnyObject], useRegex: Bool, regex: NSRegu
 
         //
         // Interesting note: this AXUI window title does not always equal the title returned by the CG API above!
-        // For example, Chrome seems to append " - Chrome" to the window title when returning it to the AXUI... so frustrating.
+        // For example, Chrome seems to append " - Chrome" to the window title when returning it to the AXUI...
         //
         if windowTitle == windowName || windowTitle == windowName + " - Chrome" {
-            // Can't just compare names, because some apps will have multiple windows with the same name (e.g. the "Project" window
-            // in IntelliJ).
+            // Can't just compare names, because some apps will have multiple windows with the same name
+            // (e.g. the "Project" window in IntelliJ).
             var axuiPos = CGPoint()
             var axuiSize = CGSize()
 
@@ -252,7 +263,12 @@ func findAXUIWindow(cgWindow: [String: AnyObject], useRegex: Bool, regex: NSRegu
 }
 
 
-func restoreLayoutsForWindow(cgWindow: [String: AnyObject],
+/// Restores the layout for a window.
+///
+/// - parameter cgWindow: the CGWindow dictionary.
+/// - parameter layoutsToRestore: the saved list of desired window layouts.
+/// - parameter screenLayouts: the saved list of screen coordinates.
+func restoreLayoutForWindow(cgWindow: [String: AnyObject],
                              layoutsToRestore: [[String: AnyObject]],
                              screenLayouts: [UInt32: [String: AnyObject]]) {
     guard let cgOwnerName = cgWindow["kCGWindowOwnerName"] as? String else { return }
@@ -351,7 +367,7 @@ func restoreLayoutsForWindow(cgWindow: [String: AnyObject],
             print("Error while processing window \(cgWindow): \(error)".red.bold)
         }
     } // for layout
-} // func restoreLayoutsForWindow
+} // func restoreLayoutForWindow
 
 
 //=====================================================================================================================
@@ -359,27 +375,26 @@ func restoreLayoutsForWindow(cgWindow: [String: AnyObject],
 // The two high level functions to save or restore the window layout.
 //
 
-func saveLayout(windowList: [[String: AnyObject]]) {
+/// Perform the save action.
+func doSave() {
     print("{")
     
-    dumpScreens()
-    dumpWindows(windowList: windowList)
+    saveScreenBounds()
+    saveWindowLayouts()
     
     print("}")
 }
 
 
-func restoreLayout(windowList: [[String: AnyObject]]) {
+/// Perform the restore action.
+func doRestore() {
     let (screenLayouts, layoutsToRestore) = readLayoutConfig()
 
     //
     // Enumerate all desktop windows.
     //
-    let listOptions = CGWindowListOption(arrayLiteral: CGWindowListOption.excludeDesktopElements, CGWindowListOption.optionOnScreenOnly)
-    let desktopWindowList = CGWindowListCopyWindowInfo(listOptions, CGWindowID(0)) as! [[String: AnyObject]]
-    
-    for cgWindow in desktopWindowList {
-        restoreLayoutsForWindow(cgWindow: cgWindow, layoutsToRestore: layoutsToRestore, screenLayouts: screenLayouts)
+    for cgWindow in getCgWindowList() {
+        restoreLayoutForWindow(cgWindow: cgWindow, layoutsToRestore: layoutsToRestore, screenLayouts: screenLayouts)
     }
 }
 
@@ -388,10 +403,6 @@ func restoreLayout(windowList: [[String: AnyObject]]) {
 //
 // Main
 //
-
-let listOptions = CGWindowListOption(arrayLiteral: CGWindowListOption.excludeDesktopElements, CGWindowListOption.optionOnScreenOnly)
-let cgWindowList: NSArray = CGWindowListCopyWindowInfo(listOptions, CGWindowID(0))!
-let windowList = cgWindowList as NSArray as! [[String: AnyObject]]
 
 // The first argument is always the executable, drop it
 let arguments = Array(ProcessInfo.processInfo.arguments.dropFirst())
@@ -409,10 +420,10 @@ do {
 
     // Save or restore?
     if parsedArguments.get(saveFlag) == true {
-        saveLayout(windowList: windowList)
+        doSave()
     } else {
         print("Restoring...")
-        restoreLayout(windowList: windowList)
+        doRestore()
     }
 }
 catch let error as ArgumentParserError {
