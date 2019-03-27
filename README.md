@@ -5,7 +5,8 @@
 
 ## Background
 
-Let's face it, MacBooks are not great at managing multiple monitors.
+Let's face it, MacBooks are not great at managing multiple monitors, at least in the 
+scenario where you are regularly unplugging them and plugging them back in.
 
 When you come back from a meeting, and plug in your 2nd (and maybe 3rd) monitor, 
 your MacBook **tries** to remember where all the windows used to be, and put them all back.
