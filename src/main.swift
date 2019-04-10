@@ -153,7 +153,7 @@ func isClose(x1: CGFloat, y1: CGFloat, x2: CGFloat, y2: CGFloat) -> Bool {
 ///
 /// - returns: a CGPoint containing the absolute coordinates.
 func convertRelativeCoordsToAbsolute(windowPos: CGPoint,
-                                     savedDisplayID: Int,
+                                     savedDisplayID: UInt32,
                                      screenLayouts: [UInt32: [String: AnyObject]]) throws -> CGPoint {
     let mainScreenRect = NSScreen.screens.first!.frame
     var targetScreen: NSScreen? = nil
@@ -164,12 +164,13 @@ func convertRelativeCoordsToAbsolute(windowPos: CGPoint,
         }
     }
     
-    if targetScreen == nil {
-        // TODO: jafischer-2019-02-12 compared saved screen bounds to current screens, find closest one.
-        throw NSError(domain: "Failed to find target screen", code: 2)
-    }
+    var screenRect: CGRect
     
-    var screenRect: CGRect = targetScreen!.frame
+    if targetScreen == nil {
+        screenRect = try findClosestScreen(savedScreenFrame: screenLayouts[savedDisplayID]!["frame"] as! [String : AnyObject])
+    } else {
+        screenRect = targetScreen!.frame
+    }
     
     // Unbelievably, NSScreen coordinates are different from CGWindow coordinates! NSScreen 0,0 is bottom-left, and
     // CGWindow is top-left. O.o
@@ -177,6 +178,33 @@ func convertRelativeCoordsToAbsolute(windowPos: CGPoint,
 
     return CGPoint(x: windowPos.x + CGFloat(screenRect.origin.x),
                    y: windowPos.y + CGFloat(screenRect.origin.y))
+}
+
+
+func findClosestScreen(savedScreenFrame: [String: AnyObject]) throws -> CGRect {
+    let savedScreenRect = CGRect(dictionaryRepresentation: savedScreenFrame as CFDictionary)!
+    var closestScreenRect = CGRect(x: -9999, y: -9999, width: 1, height: 1)
+    
+    for screen in NSScreen.screens {
+        let screenRect: CGRect = screen.frame
+        if screenRect.equalTo(savedScreenRect) {
+            return screenRect
+        } else if screenRect.size.equalTo(savedScreenRect.size) {
+            let currentClosest = hypotf(Float(abs(closestScreenRect.origin.x - savedScreenRect.origin.x)),
+                                        Float(abs(closestScreenRect.origin.y - savedScreenRect.origin.y)))
+            let distanceToThisScreen = hypotf(Float(abs(screenRect.origin.x - savedScreenRect.origin.x)),
+                                              Float(abs(screenRect.origin.y - savedScreenRect.origin.y)))
+            if distanceToThisScreen < currentClosest {
+                closestScreenRect = screenRect
+            }
+        }
+    }
+    
+    if closestScreenRect.origin.x == -9999 {
+        throw NSError(domain: "Failed to find target screen", code: 2)
+    }
+    
+    return closestScreenRect
 }
 
 
@@ -327,7 +355,7 @@ func restoreLayoutForWindow(cgWindow: [String: AnyObject],
                 // and then make the coordinates absolute. Well, actually relative to the main screen's (0,0).
                 var desiredPos = try convertRelativeCoordsToAbsolute(
                     windowPos: CGPoint(x: desiredBounds["X"] as! Int, y: desiredBounds["Y"] as! Int),
-                    savedDisplayID: savedWindowLayout["displayID"] as! Int,
+                    savedDisplayID: savedWindowLayout["displayID"] as! UInt32,
                     screenLayouts: screenLayouts)
                 
                 var desiredSize = CGSize(width: desiredBounds["Width"] as! Int, height: desiredBounds["Height"] as! Int)
