@@ -1,6 +1,7 @@
 import Cocoa
 import Utility
 import Rainbow
+import Quartz
 
 
 var debugLogging: Bool = false
@@ -483,6 +484,12 @@ do {
     
     debugLogging = parsedArguments.get(debugFlag) == true
 
+    // This call is only here to trigger the new Screen Recording permission in Catalina.
+    var _ = CGWindowListCreateImage(CGRect(x:0, y:0, width:1, height:1),
+                                             CGWindowListOption.optionOnScreenOnly,
+                                             kCGNullWindowID,
+                                             CGWindowImageOption.bestResolution)
+    
     // Save or restore?
     if parsedArguments.get(saveFlag) == true {
         doSave()

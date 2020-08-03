@@ -21,3 +21,6 @@ DerivedData/
 .build/
 
 save-*/
+
+# In case you use JetBrains CLion as your Swift IDE:
+.idea/

@@ -43,6 +43,14 @@ Accessibility application
 (System Preferences --> Security & Privacy --> Privacy 
 tab --> Select the "Accessibility" entry from the list).
 
+Catalina Update: Catalina has added a new "Screen Recording" security permission, which is needed 
+to call the windows enumeration functions. However, if you call these functions you don't get the
+security popup. You actually have to call one of the Screen Recording functions in order to get the
+popup, even if you don't need them!
+
+So I added a call to CGWindowListCreateImage in main. This triggers the security popup, and you 
+can then add the permission.
+
 ## Usage
 
 #### Saving your current layout 
