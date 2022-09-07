@@ -75,17 +75,20 @@ func screenOriginForWindow(windowBounds: CGRect) -> (CGDirectDisplayID, CGRect) 
 func saveWindowLayouts() {
     print("  \"windows\": [")
     
-    for window in getCgWindowList() {
-        var windowBounds = CGRect(dictionaryRepresentation: window["kCGWindowBounds"] as! CFDictionary)!
+    for cgWindow in getCgWindowList() {
+        var windowBounds = CGRect(dictionaryRepresentation: cgWindow["kCGWindowBounds"] as! CFDictionary)!
         let (displayID, screenBounds) = screenOriginForWindow(windowBounds: windowBounds)
         
         if displayID != 0 {
+            guard let cgOwnerName = cgWindow["kCGWindowOwnerName"] as? String else { continue }
+            guard let cgWindowName = cgWindow["kCGWindowName"] as? String else { continue }
+
             windowBounds.origin.x = windowBounds.origin.x - screenBounds.origin.x
             windowBounds.origin.y = windowBounds.origin.y - screenBounds.origin.y
 
             print("    {")
-            print("      \"kCGWindowOwnerName\": \"\(window["kCGWindowOwnerName"] as! String)\",")
-            print("      \"kCGWindowName\": \"\(window["kCGWindowName"] as! String)\",")
+            print("      \"kCGWindowOwnerName\": \"\(cgOwnerName)\",")
+            print("      \"kCGWindowName\": \"\(cgWindowName)\",")
             print("      \"displayID\": \(displayID),")
             print("      \"kCGWindowBounds\": {" +
                 "\"X\":\(Int(NSMinX(windowBounds)))," +
